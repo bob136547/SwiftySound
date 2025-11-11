@@ -328,8 +328,7 @@ public protocol Player: AnyObject {
     var isPlaying: Bool { get }
 }
 
-private var associatedCallbackKey = "com.moonlightapps.SwiftySound.associatedCallbackKey"
-
+private var completionKey: UInt8 = 0
 public typealias PlayerCompletion = (Bool) -> Void
 
 extension AVAudioPlayer: Player, @retroactive AVAudioPlayerDelegate {
