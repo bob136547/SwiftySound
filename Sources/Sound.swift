@@ -332,32 +332,35 @@ private var associatedCallbackKey = "com.moonlightapps.SwiftySound.associatedCal
 
 public typealias PlayerCompletion = (Bool) -> Void
 
-extension AVAudioPlayer: Player, AVAudioPlayerDelegate {
+extension AVAudioPlayer: Player, @retroactive AVAudioPlayerDelegate {
+    @discardableResult
     public func play(numberOfLoops: Int, completion: PlayerCompletion?) -> Bool {
-        if let cmpl = completion {
-            withUnsafePointer(to: associatedCallbackKey) {
-                objc_setAssociatedObject(self, $0, cmpl, .OBJC_ASSOCIATION_COPY_NONATOMIC)
-            }
+        if let completion {
+            objc_setAssociatedObject(self, &completionKey, completion as Any,
+                                     .OBJC_ASSOCIATION_COPY_NONATOMIC)
             delegate = self
+        } else {
+            objc_setAssociatedObject(self, &completionKey, nil, .OBJC_ASSOCIATION_ASSIGN)
+            delegate = nil
         }
         self.numberOfLoops = numberOfLoops
         return play()
     }
-
+    
     public func resume() {
         play()
     }
-
-    public func audioPlayerDidFinishPlaying(_: AVAudioPlayer, successfully flag: Bool) {
-        withUnsafePointer(to: associatedCallbackKey) {
-            let cmpl = objc_getAssociatedObject(self, $0) as? PlayerCompletion
-            cmpl?(flag)
-        }
-        objc_removeAssociatedObjects(self)
+    
+    public func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        (objc_getAssociatedObject(self, &completionKey) as? PlayerCompletion)?(flag)
+        objc_setAssociatedObject(self, &completionKey, nil, .OBJC_ASSOCIATION_ASSIGN)
         delegate = nil
     }
-
-    public func audioPlayerDecodeErrorDidOccur(_: AVAudioPlayer, error: Error?) {
+    
+    public func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        (objc_getAssociatedObject(self, &completionKey) as? PlayerCompletion)?(false)
+        objc_setAssociatedObject(self, &completionKey, nil, .OBJC_ASSOCIATION_ASSIGN)
+        delegate = nil
         print("SwiftySound playback error: \(String(describing: error))")
     }
 }
